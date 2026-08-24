@@ -1,7 +1,6 @@
 package org.acme.services;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.acme.dtos.CreateMotorcycleRequest;
 import org.acme.dtos.MotorcycleResponse;
@@ -117,7 +116,9 @@ public class MotorcycleService {
     // e a "autorizacao por dono" do CLAUDE.md aplicada em update/delete, nao
     // so em criacao/listagem. Moto de outro usuario da o MESMO 404 de "nao
     // existe": nao revelamos que o id pertence a outra pessoa.
-    private Motorcycle getOwnedMotorcycleOrThrow(Long id) {
+    // Publico (nao mais private) porque MaintenanceService reaproveita essa
+    // mesma checagem ao registrar uma manutencao (UC08 exige "moto e do usuario").
+    public Motorcycle getOwnedMotorcycleOrThrow(Long id) {
         User owner = userService.getAuthenticatedUser();
 
         Motorcycle motorcycle = motorCycleRepository.findByIdOptional(id)

@@ -1,7 +1,6 @@
 package org.acme.models;
 
 import java.time.Instant;
-import java.util.List;
 
 import io.quarkus.security.jpa.Password;
 import io.quarkus.security.jpa.Roles;
@@ -12,7 +11,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 /**
