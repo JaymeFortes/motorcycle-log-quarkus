@@ -1,5 +1,7 @@
 package org.acme.controllers;
 
+import java.util.List;
+
 import org.acme.dtos.CreateMotorcycleRequest;
 import org.acme.dtos.MotorcycleResponse;
 import org.acme.services.MotorcycleService;
@@ -9,6 +11,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -32,5 +35,10 @@ public class MotorcycleResource {
     public Response register(@NotNull @Valid CreateMotorcycleRequest request) {
         MotorcycleResponse response = motorcycleService.createMotorcycle(request);
         return Response.status(Response.Status.CREATED).entity(response).build();
+    }
+
+    @GET
+    public List<MotorcycleResponse> list() {
+        return motorcycleService.listMyMotorcycles();
     }
 }

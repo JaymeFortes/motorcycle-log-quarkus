@@ -1,5 +1,7 @@
 package org.acme.services;
 
+import java.util.List;
+
 import org.acme.dtos.CreateMotorcycleRequest;
 import org.acme.dtos.MotorcycleResponse;
 import org.acme.models.Motorcycle;
@@ -42,5 +44,16 @@ public class MotorcycleService {
         motorCycleRepository.persist(motorcycle);
 
         return MotorcycleResponse.from(motorcycle);
+    }
+
+    // Nao existe um "listAll()" aqui de proposito: sempre filtrado pelo dono
+    // autenticado, nunca a tabela inteira - e essa a "autorizacao por dono"
+    // do CLAUDE.md aplicada em consulta, nao so na criacao.
+    public List<MotorcycleResponse> listMyMotorcycles() {
+        User owner = userService.getAuthenticatedUser();
+
+        return motorCycleRepository.listByOwner(owner).stream()
+                .map(MotorcycleResponse::from)
+                .toList();
     }
 }
