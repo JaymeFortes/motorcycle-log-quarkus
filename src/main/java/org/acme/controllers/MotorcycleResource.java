@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.acme.dtos.CreateMotorcycleRequest;
 import org.acme.dtos.MotorcycleResponse;
+import org.acme.dtos.UpdateMotorcycleRequest;
 import org.acme.services.MotorcycleService;
 
 import io.quarkus.security.Authenticated;
@@ -11,9 +12,12 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -23,7 +27,9 @@ import jakarta.ws.rs.core.Response;
 // exigir isso, entao fica no nivel da classe pra valer automaticamente
 // pros proximos endpoints (GET, PUT, DELETE) sem precisar repetir.
 @Path("/motorcycles")
-@Authenticated // so que o usuario esteja logado - toda rota de /motorcycles vai exigir isso, entao fica no nivel da classe pra valer automaticamente pros proximos endpoints (GET, PUT, DELETE) sem precisar repetir.
+@Authenticated // so que o usuario esteja logado - toda rota de /motorcycles vai exigir isso,
+               // entao fica no nivel da classe pra valer automaticamente pros proximos
+               // endpoints (GET, PUT, DELETE) sem precisar repetir.
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class MotorcycleResource {
@@ -40,5 +46,17 @@ public class MotorcycleResource {
     @GET
     public List<MotorcycleResponse> list() {
         return motorcycleService.listMyMotorcycles();
+    }
+
+    @DELETE
+    @Path("/{id}")
+    public void deleteMotorcycle(@PathParam("id") Long id) {
+        motorcycleService.deleteMotorcycle(id);
+    }
+
+    @PATCH
+    @Path("/{id}")
+    public MotorcycleResponse updateMotorcycle(@PathParam("id") Long id, @Valid UpdateMotorcycleRequest request) {
+        return motorcycleService.patchMotorcycle(id, request);
     }
 }
