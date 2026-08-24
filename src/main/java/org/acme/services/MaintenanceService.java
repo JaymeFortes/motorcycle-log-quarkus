@@ -2,8 +2,13 @@ package org.acme.services;
 
 import java.util.List;
 
+import java.util.ArrayList;
+import java.util.Optional;
+
 import org.acme.dtos.CreateMaintenanceRecordRequest;
 import org.acme.dtos.MaintenanceRecordResponse;
+import org.acme.dtos.UpcomingMaintenanceResponse;
+import org.acme.dtos.UpcomingMaintenanceResponse.Status;
 import org.acme.models.MaintenanceRecord;
 import org.acme.models.MaintenanceType;
 import org.acme.models.Motorcycle;
@@ -18,6 +23,11 @@ import jakarta.ws.rs.core.Response;
 
 @ApplicationScoped
 public class MaintenanceService {
+
+    // "Proximo" = falta 10% ou menos do intervalo (ex.: intervalo de 3000km,
+    // "proximo" quando faltar <= 300km). Nao especificado na UC10, escolhido
+    // como um valor razoavel - ajuste aqui se quiser outro criterio.
+    private static final double NEAR_THRESHOLD_RATIO = 0.10;
 
     @Inject
     MaintenanceRecordRepository maintenanceRecordRepository;
@@ -71,5 +81,90 @@ public class MaintenanceService {
         return maintenanceRecordRepository.findByMotorcycle(motorcycle).stream()
                 .map(MaintenanceRecordResponse::from)
                 .toList();
+    }
+
+    /**
+     * UC10 - Proximas manutencoes previstas. Para cada MaintenanceType com
+     * intervalo definido, calcula (ultima manutencao desse tipo + intervalo)
+     * e compara com o km/horas atuais da moto, devolvendo so os que estao
+     * proximos ou vencidos (os que ainda tem folga nao aparecem na lista).
+     */
+    public List<UpcomingMaintenanceResponse> listUpcomingMaintenances(Long motorcycleId) {
+        Motorcycle motorcycle = motorcycleService.getOwnedMotorcycleOrThrow(motorcycleId);
+
+        List<UpcomingMaintenanceResponse> upcoming = new ArrayList<>();
+
+        for (MaintenanceType type : maintenanceTypeRepository.listAll()) {
+            calculateUpcoming(motorcycle, type).ifPresent(upcoming::add);
+        }
+
+        return upcoming;
+    }
+
+    // Optional vazio significa "esse tipo nao entra na lista" - por 3 motivos
+    // possiveis: sem intervalo definido, sem manutencao anterior desse tipo
+    // nessa moto (nao ha "ultima manutencao" pra somar o intervalo), ou tem
+    // folga suficiente (nem proximo, nem vencido).
+    private Optional<UpcomingMaintenanceResponse> calculateUpcoming(Motorcycle motorcycle, MaintenanceType type) {
+        boolean hasKmInterval = type.getInterval_km() != null;
+        boolean hasHoursInterval = type.getInterval_engine_hours() != null;
+        if (!hasKmInterval && !hasHoursInterval) {
+            return Optional.empty();
+        }
+
+        Optional<MaintenanceRecord> lastRecord = maintenanceRecordRepository
+                .findLatestByMotorcycleAndType(motorcycle, type);
+        if (lastRecord.isEmpty()) {
+            return Optional.empty();
+        }
+
+        // dueAt = km/horas em que o PROXIMO servico desse tipo devia acontecer.
+        // remaining = quanto falta pra chegar la (negativo = ja passou = vencido).
+        Integer dueAtKm = null;
+        Integer remainingKm = null;
+        if (hasKmInterval && lastRecord.get().getOdometer_km() != null && motorcycle.getCurrent_km() != null) {
+            dueAtKm = lastRecord.get().getOdometer_km() + type.getInterval_km();
+            remainingKm = dueAtKm - motorcycle.getCurrent_km();
+        }
+
+        Double dueAtEngineHours = null;
+        Double remainingEngineHours = null;
+        if (hasHoursInterval && lastRecord.get().getEngine_hours() != null
+                && motorcycle.getCurrent_engine_hours() != null) {
+            dueAtEngineHours = lastRecord.get().getEngine_hours() + type.getInterval_engine_hours();
+            remainingEngineHours = dueAtEngineHours - motorcycle.getCurrent_engine_hours();
+        }
+
+        if (remainingKm == null && remainingEngineHours == null) {
+            // Tinha intervalo e historico, mas faltou o dado necessario pra
+            // calcular (ex.: moto sem current_km preenchido) - nao da pra dizer nada.
+            return Optional.empty();
+        }
+
+        boolean overdueByKm = remainingKm != null && remainingKm <= 0;
+        boolean overdueByHours = remainingEngineHours != null && remainingEngineHours <= 0;
+        boolean nearByKm = remainingKm != null
+                && remainingKm <= type.getInterval_km() * NEAR_THRESHOLD_RATIO;
+        boolean nearByHours = remainingEngineHours != null
+                && remainingEngineHours <= type.getInterval_engine_hours() * NEAR_THRESHOLD_RATIO;
+
+        Status status;
+        if (overdueByKm || overdueByHours) {
+            status = Status.OVERDUE;
+        } else if (nearByKm || nearByHours) {
+            status = Status.NEAR;
+        } else {
+            // Tem folga em ambos os criterios (ou no unico que se aplica) - nao entra na lista.
+            return Optional.empty();
+        }
+
+        return Optional.of(new UpcomingMaintenanceResponse(
+                type.getId(),
+                type.getName(),
+                dueAtKm,
+                remainingKm,
+                dueAtEngineHours,
+                remainingEngineHours,
+                status));
     }
 }

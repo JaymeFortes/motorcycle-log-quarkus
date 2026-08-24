@@ -35,4 +35,10 @@ public class MaintenanceResource {
     public Response listMaintenances(@PathParam("id") Long motorcycleId) {
         return Response.ok(maintenanceService.listMaintenances(motorcycleId)).build();
     }
+
+    @GET
+    @Path("/upcoming")
+    public Response listUpcomingMaintenances(@PathParam("id") Long motorcycleId) {
+        return Response.ok(maintenanceService.listUpcomingMaintenances(motorcycleId)).build();
+    }
 }
