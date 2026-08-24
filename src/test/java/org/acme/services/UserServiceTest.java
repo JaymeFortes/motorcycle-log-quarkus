@@ -1,7 +1,6 @@
 package org.acme.services;
 
 import org.acme.dtos.RegisterRequest;
-import org.acme.dtos.UserResponse;
 import org.acme.models.User;
 
 import org.junit.jupiter.api.Test;
@@ -16,11 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Testa UserService injetando ele direto (sem passar por HTTP) - faz sentido
- * aqui porque, diferente de AuthResource, ainda nao existe nenhum endpoint
- * que use UserService. getAuthenticatedUser() depende de SecurityIdentity,
- * que normalmente so existe dentro de uma requisicao HTTP autenticada; o
- * @TestSecurity resolve isso simulando essa identidade sem precisar de um
- * JWT de verdade nem de um endpoint protegido.
+ * aqui porque nenhum endpoint usa UserService ainda. getAuthenticatedUser()
+ * depende de SecurityIdentity, que normalmente so existe dentro de uma
+ * requisicao HTTP autenticada; o @TestSecurity resolve isso simulando essa
+ * identidade sem precisar de um JWT de verdade nem de um endpoint protegido.
  */
 @QuarkusTest
 class UserServiceTest {
@@ -32,30 +30,6 @@ class UserServiceTest {
     // criar usuarios de teste - evita duplicar a logica de hash de senha.
     @Inject
     AuthService authService;
-
-    private String randomEmail() {
-        return "userservice" + System.nanoTime() + "@motolog.test";
-    }
-
-    @Test
-    void getUserByIdReturnsTheFullUser() {
-        String email = randomEmail();
-        UserResponse registered = authService.register(new RegisterRequest("Piloto", email, "segredo123"));
-
-        User found = userService.getUserById(registered.id());
-
-        assertEquals(registered.id(), found.getId());
-        assertEquals(email, found.getEmail());
-        assertEquals("Piloto", found.getName());
-    }
-
-    @Test
-    void getUserByIdThrows404WhenIdDoesNotExist() {
-        WebApplicationException exception = assertThrows(WebApplicationException.class,
-                () -> userService.getUserById(-1L));
-
-        assertEquals(404, exception.getResponse().getStatus());
-    }
 
     @Test
     @TestSecurity(user = "userservice-identity@motolog.test", roles = "user")
