@@ -1,13 +1,24 @@
 package org.acme.services;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.acme.dtos.ForgotPasswordRequest;
 import org.acme.dtos.LoginRequest;
 import org.acme.dtos.LoginResponse;
 import org.acme.dtos.RegisterRequest;
+import org.acme.dtos.ResetPasswordRequest;
 import org.acme.dtos.UserResponse;
+import org.acme.models.PasswordResetToken;
 import org.acme.models.User;
+import org.acme.repositories.PasswordResetTokenRepository;
 import org.acme.repositories.UserRepository;
 
 import io.quarkus.elytron.security.common.BcryptUtil;
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.Mailer;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.IdentityProviderManager;
@@ -24,7 +35,7 @@ import jakarta.ws.rs.core.Response;
  * Regras de negocio de autenticacao. O resource (AuthResource) so traduz
  * HTTP <-> chamadas destes dois metodos.
  */
-@ApplicationScoped
+@ApplicationScoped // Bean CDI de escopo "application" (singleton) "dizer qual é o ciclo de vida"
 public class AuthService {
 
     // Vira o claim "iss" no JWT emitido pelo login. Precisa ser IDENTICO ao
@@ -33,15 +44,25 @@ public class AuthService {
     // divergirem, todo login passa a gerar um token que a propria app rejeita.
     private static final String ISSUER = "https://motolog.local/issuer";
     private static final long TOKEN_EXPIRES_IN_SECONDS = 3600;
+    private static final long RESET_TOKEN_VALID_MINUTES = 30;
 
     @Inject
     UserRepository userRepository;
+
+    @Inject
+    PasswordResetTokenRepository passwordResetTokenRepository;
 
     // Bean gerenciado pelo Quarkus Security. E ele quem sabe, em tempo de
     // execucao, que existe um JpaIdentityProvider (gerado pela anotacao
     // @UserDefinition em User) capaz de autenticar um par usuario/senha.
     @Inject
     IdentityProviderManager identityProviderManager;
+
+    // Interface BLOQUEANTE do quarkus-mailer (existe tambem uma reativa,
+    // ReactiveMailer, que devolve Uni<Void> - nao precisamos dela aqui pelo
+    // mesmo motivo do login: os metodos rodam em worker thread comum).
+    @Inject
+    Mailer mailer;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -98,5 +119,61 @@ public class AuthService {
                 .sign();
 
         return new LoginResponse(token, TOKEN_EXPIRES_IN_SECONDS);
+    }
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        Optional<User> user = userRepository.findByEmail(request.email());
+        // Retorno normal (sem excecao) tanto se o usuario existe quanto se
+        // nao existe: e assim que garantimos os "200 sempre" do contrato -
+        // se lancassemos 404 aqui, quem chamasse a rota conseguiria
+        // descobrir quais e-mails estao cadastrados so testando um por um.
+        if (user.isEmpty()) {
+            return;
+        }
+
+        User rootUser = user.get();
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(UUID.randomUUID().toString());
+        resetToken.setUser(rootUser);
+        resetToken.setExpiresAt(Instant.now().plus(RESET_TOKEN_VALID_MINUTES, ChronoUnit.MINUTES));
+        passwordResetTokenRepository.persist(resetToken);
+
+        // Nao existe frontend (fora do escopo do MVP), entao o e-mail manda
+        // o token cru: quem recebe cola esse valor direto no corpo JSON de
+        // POST /auth/reset-password.
+        mailer.send(Mail.withText(
+                rootUser.getEmail(),
+                "Redefinicao de senha - MotoLog",
+                "Use este token para redefinir sua senha: " + resetToken.getToken()
+                        + "\nValido por " + RESET_TOKEN_VALID_MINUTES + " minutos."));
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+                .orElseThrow(() -> new WebApplicationException("Token invalido", Response.Status.BAD_REQUEST));
+
+        // Os tres motivos de recusa (nao existe / ja usado / expirado) caem
+        // no mesmo 400 com a mesma mensagem - de novo, para nao dar pista
+        // sobre qual dessas condicoes especificamente aconteceu.
+        boolean expirado = resetToken.getExpiresAt().isBefore(Instant.now());
+        if (resetToken.isUsed() || expirado) {
+            throw new WebApplicationException("Token invalido ou expirado", Response.Status.BAD_REQUEST);
+        }
+
+        // Repare que NAO chamamos userRepository.persist(user) nem
+        // passwordResetTokenRepository.persist(resetToken) de novo aqui.
+        // Os dois ja vieram do banco (findByToken -> resetToken.getUser())
+        // dentro desta mesma transacao (@Transactional), entao o Hibernate
+        // ja esta rastreando as duas entidades; os setters abaixo bastam -
+        // o UPDATE e disparado sozinho quando a transacao commita.
+        User user = resetToken.getUser();
+        user.setPassword_hash(BcryptUtil.bcryptHash(request.newPassword()));
+
+        // Uso unico: uma vez consumido, esse token nunca mais valida um reset,
+        // mesmo que ainda esteja dentro da janela de 30 minutos.
+        resetToken.setUsed(true);
     }
 }

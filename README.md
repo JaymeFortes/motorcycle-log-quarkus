@@ -12,10 +12,9 @@ recurso e Dev Services.
 
 - Quarkus `3.38.3` e Java `21`.
 - Endpoint temporario `GET /hello`.
-- `POST /auth/register` e `POST /auth/login` implementados (ver "Autenticacao"
-  abaixo).
-- Mailer, reset de senha, motos, manutencoes e OpenAPI ainda precisam ser
-  adicionados.
+- `POST /auth/register`, `POST /auth/login`, `POST /auth/forgot-password` e
+  `POST /auth/reset-password` implementados (ver "Autenticacao" abaixo).
+- Motos, manutencoes e OpenAPI ainda precisam ser adicionados.
 
 O escopo abaixo e o contrato do MVP a ser implementado. Nao considere um endpoint
 disponivel ate que ele tenha codigo e teste correspondentes.
@@ -30,6 +29,15 @@ programatica (via `IdentityProviderManager`, sem usar Basic Auth) e, se as
 credenciais forem validas, emite um JWT com `io.smallrye.jwt.build.Jwt`. As
 rotas protegidas (a implementar) vao validar esse JWT via `quarkus-smallrye-jwt`,
 sem exigir Basic Auth em cada requisicao.
+
+`POST /auth/forgot-password` sempre retorna `200`, exista ou nao o e-mail (sem
+enumeracao). Se existir, gera um `PasswordResetToken` (UUID, valido por 30
+minutos, uso unico) e envia o token por e-mail via `quarkus-mailer`. Em
+`%dev`/`%test`, nenhum e-mail sai de verdade — `quarkus.mailer.mock=true` e o
+padrao fora de `%prod`, entao a mensagem so aparece no log (e, em teste, via
+`io.quarkus.mailer.MockMailbox`). `POST /auth/reset-password` valida esse
+token (existe, nao expirou, nao foi usado) e troca a senha; qualquer falha
+nessa validacao retorna `400` com mensagem generica.
 
 ## Escopo do MVP
 

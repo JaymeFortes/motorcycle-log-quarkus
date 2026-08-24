@@ -1,25 +1,29 @@
 package org.acme.models;
 
 import java.time.Instant;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.util.List;
 
 import io.quarkus.security.jpa.Password;
 import io.quarkus.security.jpa.Roles;
 import io.quarkus.security.jpa.UserDefinition;
 import io.quarkus.security.jpa.Username;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 /**
  * @UserDefinition registra esta entidade no quarkus-security-jpa: em tempo de
- * build, a extensao gera um JpaIdentityProvider que sabe buscar um User pelo
- * campo @Username e comparar a senha informada com o hash em @Password.
- * Isso e o que AuthService usa (via IdentityProviderManager) para validar o
- * login sem reimplementar a comparacao de bcrypt na mao.
+ *                 build, a extensao gera um JpaIdentityProvider que sabe buscar
+ *                 um User pelo
+ *                 campo @Username e comparar a senha informada com o hash
+ *                 em @Password.
+ *                 Isso e o que AuthService usa (via IdentityProviderManager)
+ *                 para validar o
+ *                 login sem reimplementar a comparacao de bcrypt na mao.
  */
 @Entity
 @Table(name = "users")
@@ -52,6 +56,12 @@ public class User {
     private Instant created_at = Instant.now();
 
     public User() {
+    }
+
+    public User(String email, String name, String password_hash) {
+        this.email = email;
+        this.name = name;
+        this.password_hash = password_hash;
     }
 
     public Long getId() {
@@ -100,5 +110,5 @@ public class User {
 
     public void setCreated_at(Instant created_at) {
         this.created_at = created_at;
-    } 
+    }
 }

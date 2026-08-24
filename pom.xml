@@ -80,9 +80,21 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-jwt</artifactId>
         </dependency>
+        <!-- Envio de e-mail para o fluxo de reset de senha. Fora de %prod, o -->
+        <!-- Quarkus simula o envio (nao precisa de SMTP configurado em dev/teste). -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- @TestSecurity: simula um SecurityIdentity autenticado em teste, sem precisar de um JWT real. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-test-security</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
