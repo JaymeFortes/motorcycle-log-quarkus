@@ -10,15 +10,26 @@ recurso e Dev Services.
 
 ## Estado atual
 
-O repositorio ainda esta na fundacao gerada pelo Quarkus:
-
 - Quarkus `3.38.3` e Java `21`.
 - Endpoint temporario `GET /hello`.
-- Teste de exemplo para `/hello`.
-- PostgreSQL, Panache, JWT, mailer e OpenAPI ainda precisam ser adicionados.
+- `POST /auth/register` e `POST /auth/login` implementados (ver "Autenticacao"
+  abaixo).
+- Mailer, reset de senha, motos, manutencoes e OpenAPI ainda precisam ser
+  adicionados.
 
 O escopo abaixo e o contrato do MVP a ser implementado. Nao considere um endpoint
 disponivel ate que ele tenha codigo e teste correspondentes.
+
+### Autenticacao (implementado)
+
+O login usa `quarkus-security-jpa`: a entidade `User` e anotada com
+`@UserDefinition`/`@Username`/`@Password`/`@Roles`, e o Quarkus gera um
+`JpaIdentityProvider` que sabe buscar o usuario pelo e-mail e comparar a
+senha com o hash BCrypt. `POST /auth/login` invoca esse provider de forma
+programatica (via `IdentityProviderManager`, sem usar Basic Auth) e, se as
+credenciais forem validas, emite um JWT com `io.smallrye.jwt.build.Jwt`. As
+rotas protegidas (a implementar) vao validar esse JWT via `quarkus-smallrye-jwt`,
+sem exigir Basic Auth em cada requisicao.
 
 ## Escopo do MVP
 
