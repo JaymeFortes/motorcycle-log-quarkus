@@ -7,6 +7,7 @@ import org.acme.dtos.MotorcycleResponse;
 import org.acme.dtos.UpdateMotorcycleRequest;
 import org.acme.models.Motorcycle;
 import org.acme.models.User;
+import org.acme.repositories.MaintenanceRecordRepository;
 import org.acme.repositories.MotorCycleRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,6 +24,9 @@ public class MotorcycleService {
 
     @Inject
     MotorCycleRepository motorCycleRepository;
+
+    @Inject
+    MaintenanceRecordRepository maintenanceRecordRepository;
 
     @Transactional
     public MotorcycleResponse createMotorcycle(CreateMotorcycleRequest request) {
@@ -109,6 +113,13 @@ public class MotorcycleService {
     @Transactional
     public void deleteMotorcycle(Long id) {
         Motorcycle motorcycle = getOwnedMotorcycleOrThrow(id);
+
+        // Sem isso, o Postgres rejeita o delete com um erro de FK constraint
+        // sempre que a moto tiver alguma manutencao registrada (maintenance_records
+        // ainda aponta pra ela) - apaga o historico junto, de proposito: excluir
+        // a moto assumindo que o dono tambem quer descartar o historico dela.
+        maintenanceRecordRepository.delete("motorcycle", motorcycle);
+
         motorCycleRepository.delete(motorcycle);
     }
 

@@ -12,14 +12,19 @@ completo.
 
 ## Estado confirmado do repositorio
 
-- Projeto Maven Quarkus em `c:\Users\jayme\Program\quartus\moto-log`.
+- Backend: projeto Maven Quarkus na raiz do repositorio (`c:\Users\Jayme\Program1\motorcycle-log-quarkus`).
 - Quarkus `3.38.3`, Java `21`, Maven Wrapper presente.
-- Dependencias atuais: `quarkus-rest`, `quarkus-arc`, JUnit do Quarkus e RestAssured.
-- Existe somente o endpoint temporario `GET /hello` em `GreetingResource`.
-- Existe um teste para `/hello` em `GreetingResourceTest`.
-- `application.properties` esta vazio.
-- As pastas `controllers`, `dtos` e `services` ja existem, mas o dominio do MVP ainda nao foi implementado.
-- O `README.md` documenta o escopo funcional e os comandos de execucao.
+- **API do MVP completa e testada**: register/login/forgot-password/reset-password,
+  CRUD de motos com autorizacao por dono, registro/historico de manutencoes,
+  proximas manutencoes previstas (UC10) e `GET /maintenance-types` (catalogo
+  fixo, seedado via `import.sql`, sem endpoint de escrita).
+- Autenticacao via `quarkus-security-jpa` (`@UserDefinition` em `User`) +
+  JWT emitido manualmente no login (`io.smallrye.jwt.build.Jwt`) - nao usa
+  Basic Auth. Rotas protegidas usam `@Authenticated`/`@RolesAllowed`.
+- Testes com `@QuarkusTest` + RestAssured cobrindo os fluxos principais e
+  isolamento entre usuarios diferentes.
+- `README.md` documenta o escopo funcional e os comandos de execucao.
+- **Frontend**: iniciado em `2026-08-24`. Ver secao "Frontend" abaixo.
 
 ## Contrato funcional
 
@@ -65,19 +70,33 @@ Regras importantes:
 - Usar Dev Services em `%dev` e deixar a conexao real de PostgreSQL no `%prod`.
 - Popular `MaintenanceType` com `import.sql`.
 - Cobrir cada regra critica com `@QuarkusTest` e RestAssured.
-- Manter alteracoes pequenas, coesas e alinhadas ao escopo do MVP; ideias extras devem ser registradas como v2.
-- Nao criar frontend, refresh token, blacklist de logout, upload ou filtros avancados nesta fase.
+- Manter alteracoes pequenas, coesas e alinhadas ao escopo de cada fase; ideias extras devem ser registradas como v2.
+- Nao criar refresh token, blacklist de logout, upload ou filtros avancados nesta fase.
 
-## Ordem recomendada de trabalho
+## Ordem recomendada de trabalho (backend - concluido)
 
-1. Adicionar extensoes e configurar JWT/Dev Services.
-2. Criar entidades, relacionamentos, constraints e seed.
-3. Implementar register/login.
-4. Implementar reset de senha.
-5. Implementar motos e autorizacao por dono.
-6. Implementar manutencoes e historico.
-7. Implementar proximas manutencoes, se o MVP basico estiver estavel.
-8. Adicionar testes de integracao e atualizar o README conforme o estado real.
+1. ~~Adicionar extensoes e configurar JWT/Dev Services.~~
+2. ~~Criar entidades, relacionamentos, constraints e seed.~~
+3. ~~Implementar register/login.~~
+4. ~~Implementar reset de senha.~~
+5. ~~Implementar motos e autorizacao por dono.~~
+6. ~~Implementar manutencoes e historico.~~
+7. ~~Implementar proximas manutencoes.~~
+8. ~~Adicionar testes de integracao e atualizar o README conforme o estado real.~~
+
+## Frontend (fase atual)
+
+Iniciada em `2026-08-24`. Objetivo: consumir a API existente com uma
+interface simples - nao e o foco de comparacao Quarkus/Spring do projeto,
+entao manter o escopo enxuto.
+
+- Stack: React + TypeScript + Vite + Tailwind CSS.
+- Projeto separado do backend (pasta propria, ex.: `frontend/`), consumindo
+  a API via HTTP - nao serve os assets pelo Quarkus nesta fase.
+- Guarda o JWT recebido no login e manda `Authorization: Bearer` nas
+  chamadas as rotas protegidas.
+- Escopo funcional e ordem de implementacao: a definir na sessao em que o
+  frontend for planejado (ver historico de decisao no chat/plano salvo).
 
 ## Validacao minima
 

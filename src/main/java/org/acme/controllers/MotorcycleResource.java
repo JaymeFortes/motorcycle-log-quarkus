@@ -16,6 +16,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -52,6 +53,15 @@ public class MotorcycleResource {
     @Path("/{id}")
     public void deleteMotorcycle(@PathParam("id") Long id) {
         motorcycleService.deleteMotorcycle(id);
+    }
+
+    // Substituicao total (todos os campos obrigatorios) - o CLAUDE.md pede
+    // PUT nesse contrato. MotorcycleService.updateMotorcycle ja existia,
+    // so nao estava exposto por nenhum endpoint ainda.
+    @PUT
+    @Path("/{id}")
+    public MotorcycleResponse replaceMotorcycle(@PathParam("id") Long id, @NotNull @Valid CreateMotorcycleRequest request) {
+        return motorcycleService.updateMotorcycle(id, request);
     }
 
     @PATCH

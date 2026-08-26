@@ -19,4 +19,8 @@ public class MotorCycleRepository implements PanacheRepository<Motorcycle> {
     public List<Motorcycle> listByOwner(User owner) {
         return find("owner", owner).list();
     }
+
+    public Optional<Motorcycle> findFirstByUser(User user) {
+        return find("owner", user).firstResultOptional();
+    }
 }

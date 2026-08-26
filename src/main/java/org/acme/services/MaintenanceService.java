@@ -1,19 +1,23 @@
 package org.acme.services;
 
-import java.util.List;
-
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
+import org.acme.dtos.BotMaintenanceRequest;
 import org.acme.dtos.CreateMaintenanceRecordRequest;
 import org.acme.dtos.MaintenanceRecordResponse;
+import org.acme.dtos.MaintenanceTypeResponse;
 import org.acme.dtos.UpcomingMaintenanceResponse;
 import org.acme.dtos.UpcomingMaintenanceResponse.Status;
 import org.acme.models.MaintenanceRecord;
 import org.acme.models.MaintenanceType;
 import org.acme.models.Motorcycle;
+import org.acme.models.User;
 import org.acme.repositories.MaintenanceRecordRepository;
 import org.acme.repositories.MaintenanceTypeRepository;
+import org.acme.repositories.MotorCycleRepository;
+import org.acme.repositories.UserRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -39,6 +43,48 @@ public class MaintenanceService {
     // duplicar "essa moto existe e e do usuario autenticado?" aqui de novo.
     @Inject
     MotorcycleService motorcycleService;
+
+    @Inject
+    UserRepository userRepository;
+
+    @Inject
+    MotorCycleRepository motorcycleRepository;
+
+    @Transactional
+    public void registerFromBot(BotMaintenanceRequest req) {
+        // Descobre o usuário pelo Telegram vinculado
+        User user = userRepository.findByTelegramChatId(req.chatId())
+                .orElseThrow(() -> new WebApplicationException(
+                        "Telegram não vinculado a nenhum usuário", Response.Status.FORBIDDEN));
+
+        // Pega a moto do usuário (assumindo uma por usuário no teste)
+        Motorcycle motorcycle = motorcycleRepository.findFirstByUser(user)
+                .orElseThrow(() -> new WebApplicationException(
+                        "Usuário não tem moto cadastrada", Response.Status.NOT_FOUND));
+
+        // Busca o tipo de serviço (reaproveita o repositório que você já tem)
+        MaintenanceType maintenanceType = maintenanceTypeRepository
+                .findByIdOptional(req.maintenanceTypeId())
+                .orElseThrow(() -> new WebApplicationException(
+                        "Tipo de manutenção não encontrado", Response.Status.NOT_FOUND));
+
+        MaintenanceRecord record = new MaintenanceRecord();
+        record.setMotorcycle(motorcycle);
+        record.setMaintenanceType(maintenanceType);
+        // MaintenanceRecord.service_date e java.util.Date (mesmo tipo usado
+        // em CreateMaintenanceRecordRequest); o DTO do bot usa LocalDate
+        // (mais moderno), entao precisa converter - java.sql.Date.valueOf
+        // aceita LocalDate direto e ja e um java.util.Date por heranca.
+        record.setService_date(java.sql.Date.valueOf(req.serviceDate()));
+        record.setOdometer_km(req.odometerKm());
+        record.setEngine_hours(req.engineHours());
+        // Mesma historia: cost aqui e BigDecimal, mas o campo na entidade e
+        // Double - converte explicitamente.
+        record.setCost(req.cost() != null ? req.cost().doubleValue() : null);
+        record.setNotes(req.notes());
+
+        maintenanceRecordRepository.persist(record);
+    }
 
     /**
      * UC08 - Registrar manutencao. Fluxo: escolhe moto (motorcycleId, vem da
@@ -73,6 +119,13 @@ public class MaintenanceService {
         maintenanceRecordRepository.persist(record);
 
         return MaintenanceRecordResponse.from(record);
+    }
+
+    // GET /maintenance-types: catalogo fixo (seed via import.sql), so leitura.
+    public List<MaintenanceTypeResponse> listMaintenanceTypes() {
+        return maintenanceTypeRepository.listAll().stream()
+                .map(MaintenanceTypeResponse::from)
+                .toList();
     }
 
     public List<MaintenanceRecordResponse> listMaintenances(Long motorcycleId) {
@@ -154,7 +207,8 @@ public class MaintenanceService {
         } else if (nearByKm || nearByHours) {
             status = Status.NEAR;
         } else {
-            // Tem folga em ambos os criterios (ou no unico que se aplica) - nao entra na lista.
+            // Tem folga em ambos os criterios (ou no unico que se aplica) - nao entra na
+            // lista.
             return Optional.empty();
         }
 

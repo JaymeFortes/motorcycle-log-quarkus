@@ -53,6 +53,9 @@ public class User {
     @Column(nullable = false)
     private Instant created_at = Instant.now();
 
+    @Column(name = "telegram_chat_id", unique = true)
+    private Long telegramChatId;
+
     public User() {
     }
 
@@ -108,5 +111,13 @@ public class User {
 
     public void setCreated_at(Instant created_at) {
         this.created_at = created_at;
+    }
+
+    public Long getTelegramChatId() {
+        return telegramChatId;
+    }
+
+    public void setTelegramChatId(Long telegramChatId) {
+        this.telegramChatId = telegramChatId;
     }
 }
