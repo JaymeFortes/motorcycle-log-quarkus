@@ -22,5 +22,10 @@ INSERT INTO maintenance_types (name, interval_km, interval_engine_hours) VALUES 
 -- versao so importa pra senhas > 72 bytes), entao o hash em si e valido,
 -- so o prefixo precisa ser esse.
 -- Login: demo@motolog.test / demo12345
-INSERT INTO users (email, name, password_hash, role, created_at)
-VALUES ('demo@motolog.test', 'Usuario Demo', '$2a$10$V.1rw7Fd593ah5LB.1XF5uBfT0vnXny4rO5LKldtpWEqv8ABX4dR2', 'user', now());
+INSERT INTO users (email, name, password_hash, role, created_at, telegram_chat_id)
+VALUES ('demo@motolog.test', 'Usuario Demo', '$2a$10$V.1rw7Fd593ah5LB.1XF5uBfT0vnXny4rO5LKldtpWEqv8ABX4dR2', 'user', now(),909307766);
+
+-- Moto padrao do usuario demo, pra ja ter algo pra testar (manutencoes, bot etc.)
+-- sem precisar cadastrar na mao a cada restart (drop-and-create apaga tudo).
+INSERT INTO motorcycles (brand, model, model_year, plate, current_km, current_engine_hours, created_at, owner_id)
+VALUES ('Honda', 'CG 160', 2022, 'DEMO1A23', 15000, 320.5, now(), (SELECT id FROM users WHERE email = 'demo@motolog.test'));
